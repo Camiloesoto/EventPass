@@ -115,14 +115,35 @@ class WaitlistController extends Controller
      * @param Event $evento
      * @return View
      */
-    public function mostrar(Event $evento): View
+    public function mostrar(Event $evento): JsonResponse
     {
         $entradas = WaitlistEntry::where('evento_id', $evento->id)
             ->with('usuario')
             ->orderBy('created_at')
-            ->paginate(20);
+            ->get();
 
-        return view('lista-espera.mostrar', compact('evento', 'entradas'));
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'evento' => [
+                    'id' => $evento->id,
+                    'nombre' => $evento->getNombre(),
+                    'capacidad' => $evento->getCapacidad(),
+                    'capacidad_disponible' => $evento->capacidadDisponible(),
+                ],
+                'entradas_lista_espera' => $entradas->map(function ($entrada) {
+                    return [
+                        'id' => $entrada->id,
+                        'usuario_id' => $entrada->getUsuarioId(),
+                        'usuario_nombre' => $entrada->usuario ? $entrada->usuario->name : 'N/A',
+                        'estado' => $entrada->getEstado(),
+                        'fecha_notificacion' => $entrada->getFechaNotificacion() ? $entrada->getFechaNotificacion()->format('Y-m-d H:i:s') : null,
+                        'created_at' => $entrada->created_at,
+                    ];
+                }),
+                'total_entradas' => $entradas->count()
+            ]
+        ]);
     }
 
     /**

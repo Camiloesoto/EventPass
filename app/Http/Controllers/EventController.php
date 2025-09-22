@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
 /**
@@ -19,11 +20,29 @@ class EventController extends Controller
      *
      * @return View
      */
-    public function index(): View
+    public function index(): JsonResponse
     {
-        $eventos = Event::withTrashed()->latest()->paginate(10);
+        $eventos = Event::latest()->get();
         
-        return view('eventos.index', compact('eventos'));
+        return response()->json([
+            'success' => true,
+            'data' => $eventos->map(function ($evento) {
+                return [
+                    'id' => $evento->id,
+                    'nombre' => $evento->getNombre(),
+                    'descripcion' => $evento->getDescripcion(),
+                    'fecha_inicio' => $evento->getFechaInicio()->format('Y-m-d H:i:s'),
+                    'fecha_fin' => $evento->getFechaFin()->format('Y-m-d H:i:s'),
+                    'capacidad' => $evento->getCapacidad(),
+                    'estado' => $evento->getEstado(),
+                    'capacidad_disponible' => $evento->capacidadDisponible(),
+                    'esta_agotado' => $evento->estaAgotado(),
+                    'created_at' => $evento->created_at,
+                    'updated_at' => $evento->updated_at,
+                ];
+            }),
+            'total' => $eventos->count()
+        ]);
     }
 
     /**
@@ -54,7 +73,7 @@ class EventController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'nombre' => 'required|string|max:255|min:3',
@@ -66,12 +85,21 @@ class EventController extends Controller
         ]);
 
         $datos = $request->all();
-
         $evento = Event::create($datos);
 
-        return redirect()
-            ->route('eventos.show', $evento)
-            ->with('success', 'Evento creado exitosamente.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Evento creado exitosamente.',
+            'data' => [
+                'id' => $evento->id,
+                'nombre' => $evento->getNombre(),
+                'descripcion' => $evento->getDescripcion(),
+                'fecha_inicio' => $evento->getFechaInicio()->format('Y-m-d H:i:s'),
+                'fecha_fin' => $evento->getFechaFin()->format('Y-m-d H:i:s'),
+                'capacidad' => $evento->getCapacidad(),
+                'estado' => $evento->getEstado(),
+            ]
+        ], 201);
     }
 
     /**
@@ -80,11 +108,25 @@ class EventController extends Controller
      * @param Event $evento
      * @return View
      */
-    public function show(Event $evento): View
+    public function show(Event $evento): JsonResponse
     {
-        $evento->load(['tickets', 'entradasListaEspera.usuario']);
-        
-        return view('eventos.show', compact('evento'));
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $evento->id,
+                'nombre' => $evento->getNombre(),
+                'descripcion' => $evento->getDescripcion(),
+                'fecha_inicio' => $evento->getFechaInicio()->format('Y-m-d H:i:s'),
+                'fecha_fin' => $evento->getFechaFin()->format('Y-m-d H:i:s'),
+                'capacidad' => $evento->getCapacidad(),
+                'estado' => $evento->getEstado(),
+                'capacidad_disponible' => $evento->capacidadDisponible(),
+                'esta_agotado' => $evento->estaAgotado(),
+                'reporte_ventas' => $evento->reporteVentas(),
+                'created_at' => $evento->created_at,
+                'updated_at' => $evento->updated_at,
+            ]
+        ]);
     }
 
     /**

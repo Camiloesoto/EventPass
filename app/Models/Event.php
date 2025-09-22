@@ -73,7 +73,7 @@ class Event extends Model
      */
     public function getFechaInicio(): Carbon
     {
-        return $this->attributes['fecha_inicio'];
+        return $this->fecha_inicio;
     }
 
     /**
@@ -83,7 +83,7 @@ class Event extends Model
      */
     public function getFechaFin(): Carbon
     {
-        return $this->attributes['fecha_fin'];
+        return $this->fecha_fin;
     }
 
     /**
