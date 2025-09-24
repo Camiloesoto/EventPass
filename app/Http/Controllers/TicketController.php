@@ -150,15 +150,8 @@ class TicketController extends Controller
 
     public function showQr(Ticket $ticket)
     {
-        // Simple QR code generation (you can enhance this later)
-        $qrData = [
-            'ticket_id' => $ticket->getId(),
-            'user_id' => $ticket->getUserId(),
-            'event' => $ticket->orderItem->ticketType->event->getName(),
-            'hash' => $ticket->getQrCodeHash(),
-        ];
-
-        return response()->json($qrData);
+        // Return a beautiful QR code view
+        return view('tickets.qr', compact('ticket'));
     }
 
     public function download(Ticket $ticket)
