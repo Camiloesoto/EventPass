@@ -13,13 +13,13 @@
                     <p class="mb-4">Crea eventos, vende tickets y gestiona todo desde un panel de administración profesional</p>
                     
                     <div class="mt-4">
-                        @guest
+        @guest
                             <a href="{{ route('register') }}" class="btn btn-light btn-lg mr-3">Registrarse</a>
                             <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg">Iniciar Sesión</a>
-                        @endguest
-                        @auth
+        @endguest
+        @auth
                             <a href="{{ route('dashboard') }}" class="btn btn-light btn-lg mr-3">Ir al Dashboard</a>
-                        @endauth
+        @endauth
                         <a href="{{ route('events.index') }}" class="btn btn-outline-light btn-lg">Ver Eventos</a>
                     </div>
                 </div>
@@ -36,7 +36,7 @@
                     <h5 class="card-title">Eventos Activos</h5>
                     <p class="card-text">Eventos disponibles para comprar tickets</p>
                 </div>
-            </div>
+      </div>
         </div>
         <div class="col-md-4 text-center">
             <div class="card h-100">
@@ -88,8 +88,8 @@
                     <h4 class="card-title">Estadísticas</h4>
                     <p class="card-text">Monitorea ventas y estadísticas en tiempo real</p>
                 </div>
-            </div>
-        </div>
+    </div>
+    </div>
     </div>
 
     <!-- Events Section -->
@@ -99,7 +99,7 @@
                 <h2>Eventos Disponibles</h2>
                 <a href="{{ route('events.index') }}" class="btn btn-primary">Ver Todos</a>
             </div>
-        </div>
+      </div>
     </div>
 
     @if($events->isEmpty())
@@ -114,10 +114,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+      </div>
     @else
         <div class="row">
-            @foreach($events as $event)
+        @foreach($events as $event)
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
@@ -141,17 +141,17 @@
                             <div class="mb-3">
                                 <span class="badge badge-{{ $event->getStatus() === 'published' ? 'success' : 'secondary' }}">
                                     {{ ucfirst($event->getStatus()) }}
-                                </span>
-                            </div>
+              </span>
+            </div>
                             
                             <a href="{{ route('events.show', $event) }}" class="btn btn-primary btn-sm">
                                 Ver Detalles
                             </a>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
+              </div>
+              </div>
+            </div>
+        @endforeach
+      </div>
     @endif
 </div>
 @endsection

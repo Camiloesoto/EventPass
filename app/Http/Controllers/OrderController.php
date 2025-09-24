@@ -2,131 +2,93 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\OrderStatus;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\TicketType;
 use App\Http\Requests\StoreOrderRequest;
-use App\Models\{Order, OrderItem, TicketType};
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function index(): JsonResponse
+    public function index()
     {
-        $orders = Order::query()
-            ->with(['items.ticketType:id,event_id,name,price', 'payments'])
-            ->latest('order_date')
+        $orders = auth()->user()->orders()
+            ->with(['items.ticketType.event'])
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return response()->json([
-            'success' => true,
-            'orders' => $orders,
-        ]);
+        return view('orders.index', compact('orders'));
     }
 
-    public function store(StoreOrderRequest $request): JsonResponse|RedirectResponse
+    public function store(StoreOrderRequest $request)
     {
-        $validated = $request->validated();
+        try {
+            DB::beginTransaction();
 
-        // Build items array (support both API payload and HTML form posts)
-        $items = collect($validated['items'] ?? [])
-            ->filter(fn ($i) => isset($i['ticket_type_id']) && (int)($i['quantity'] ?? 0) > 0)
-            ->values()
-            ->all();
-
-        if (empty($items)) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'No items selected'], 422);
-            }
-            return back()->withErrors(['items' => 'Please select at least one ticket.'])->withInput();
-        }
-
-        $user = $request->user();
-        if (!$user) {
-            // Should be behind auth middleware, but handle just in case
-            return $request->wantsJson()
-                ? response()->json(['success' => false, 'message' => 'Unauthorized'], 401)
-                : redirect()->route('login');
-        }
-
-        // Enforce availability per ticket type
-        $errors = [];
-        $resolvedItems = [];
-        foreach ($items as $index => $item) {
-            $ticketType = TicketType::query()->select(['id', 'name', 'price', 'quantity'])->findOrFail($item['ticket_type_id']);
-            $requested = (int) $item['quantity'];
-            $available = (int) $ticketType->available_quantity;
-            if ($requested > $available) {
-                $errors["items.$index.quantity"] = "Only $available left for {$ticketType->name}.";
-            } else {
-                $resolvedItems[] = [
-                    'ticketType' => $ticketType,
-                    'quantity' => $requested,
-                    'unit_price' => isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $ticketType->price,
-                ];
-            }
-        }
-
-        if (!empty($errors)) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'errors' => $errors], 422);
-            }
-            return back()->withErrors($errors)->withInput();
-        }
-
-        $order = DB::transaction(function () use ($validated, $resolvedItems, $user) {
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => auth()->id(),
                 'order_date' => now(),
-                'status' => OrderStatus::pending,
-                'discount_amount' => (float) ($validated['discount_amount'] ?? 0),
+                'status' => \App\Enums\OrderStatus::pending,
                 'subtotal_amount' => 0,
+                'discount_amount' => 0,
                 'total_amount' => 0,
             ]);
 
-            foreach ($resolvedItems as $ri) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'ticket_type_id' => $ri['ticketType']->id,
-                    'quantity' => (int) $ri['quantity'],
-                    'unit_price' => (float) $ri['unit_price'],
+            $subtotal = 0;
+
+            foreach ($request->validated()['items'] as $item) {
+                $ticketType = TicketType::findOrFail($item['ticket_type_id']);
+                
+                $orderItem = OrderItem::create([
+                    'order_id' => $order->getId(),
+                    'ticket_type_id' => $ticketType->getId(),
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $ticketType->getPrice(),
                 ]);
+
+                $subtotal += $orderItem->getQuantity() * $orderItem->getUnitPrice();
             }
 
-            $order->load('items');
-            $order->calculateTotals();
+            $order->setSubtotalAmount($subtotal);
+            $order->setTotalAmount($subtotal);
             $order->save();
 
-            return $order->fresh(['items.ticketType']);
-        });
+            DB::commit();
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'order' => $order,
-                'next' => [
-                    'checkout' => route('orders.checkout', ['order' => $order->id]),
-                ],
-            ], 201);
+            Log::info('Order created', [
+                'order_id' => $order->getId(),
+                'user_id' => auth()->id(),
+                'total_amount' => $order->getTotalAmount(),
+            ]);
+
+            return redirect()->route('orders.checkout', $order)
+                ->with('success', 'Order created successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Error creating order', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return back()->withInput()
+                ->with('error', 'Error creating order. Please try again.');
         }
-
-        return redirect()->route('orders.checkout', $order);
     }
 
-    public function checkout(Order $order): View
+    public function checkout(Order $order)
     {
-        $order->load('items.ticketType');
-        return view('orders.checkout', ['order' => $order]);
+        $order->load(['items.ticketType.event', 'user']);
+        
+        return view('orders.checkout', compact('order'));
     }
 
-    public function show(Order $order): JsonResponse
+    public function show(Order $order)
     {
-        $order->load(['items.ticketType', 'payments']);
-
-        return response()->json([
-            'success' => true,
-            'order' => $order,
-        ]);
+        $order->load(['items.ticketType.event', 'payments']);
+        
+        return view('orders.show', compact('order'));
     }
 }

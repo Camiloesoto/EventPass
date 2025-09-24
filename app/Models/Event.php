@@ -30,9 +30,9 @@ class Event extends Model
         return $this->hasMany(TicketType::class);
     }
 
-    public function waitlistEntries(): HasMany
+    public function ticketTypes(): HasMany
     {
-        return $this->hasMany(WaitlistEntry::class);
+        return $this->hasMany(TicketType::class);
     }
 
     /* =====================
