@@ -160,6 +160,22 @@ class TicketController extends Controller
         return response()->json($qrData);
     }
 
+    public function download(Ticket $ticket)
+    {
+        // For now, return a simple text response
+        // Later you can implement actual PDF generation
+        $content = "Ticket: {$ticket->getCode()}\n";
+        $content .= "Event: {$ticket->orderItem->ticketType->event->getName()}\n";
+        $content .= "Type: {$ticket->orderItem->ticketType->getName()}\n";
+        $content .= "Price: $" . number_format($ticket->orderItem->getUnitPrice(), 2) . "\n";
+        $content .= "Status: {$ticket->getStatus()->value}\n";
+        $content .= "QR Code: {$ticket->getQrCodeHash()}\n";
+
+        return response($content)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="ticket-' . $ticket->getCode() . '.txt"');
+    }
+
     private function generateUniqueTicketCode(int $orderId, int $ticketNumber): string
     {
         $baseCode = 'TK' . str_pad($orderId, 6, '0', STR_PAD_LEFT) . str_pad($ticketNumber, 3, '0', STR_PAD_LEFT);

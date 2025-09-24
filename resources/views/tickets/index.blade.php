@@ -56,11 +56,9 @@
                         @endif
                         
                         <div class="d-grid gap-2">
-                            @if($ticket->pdf_url)
-                                <a href="{{ route('tickets.download', $ticket) }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-download"></i> Descargar PDF
-                                </a>
-                            @endif
+                            <a href="{{ route('tickets.download', $ticket) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-download"></i> Descargar Ticket
+                            </a>
                             
                             <a href="{{ route('tickets.qr', $ticket) }}" class="btn btn-outline-info" target="_blank">
                                 <i class="fas fa-qrcode"></i> Ver Código QR
