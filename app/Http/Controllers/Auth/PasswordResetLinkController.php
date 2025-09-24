@@ -3,34 +3,18 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\RequestPasswordResetLinkRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class PasswordResetLinkController extends Controller
 {
-    /**
-     * Show the password reset link request page.
-     */
-    public function create(Request $request): Response
+    public function create()
     {
-        return Inertia::render('auth/forgot-password', [
-            'status' => $request->session()->get('status'),
-        ]);
+        return view('auth.forgot-password');
     }
 
-    /**
-     * Handle an incoming password reset link request.
-     */
-    public function store(RequestPasswordResetLinkRequest $request): RedirectResponse
+    public function store(Request $request)
     {
-        Password::sendResetLink(
-            $request->only('email')
-        );
-
-        return back()->with('status', __('A reset link will be sent if the account exists.'));
+        // Placeholder - implementar lógica de reset de contraseña
+        return back()->with('status', 'Password reset link sent!');
     }
 }

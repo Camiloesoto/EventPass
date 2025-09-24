@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\{HasMany, MorphMany};
+use Carbon\Carbon;
 
 class User extends Model implements AuthenticatableContract
 {
@@ -72,12 +73,12 @@ class User extends Model implements AuthenticatableContract
         $this->attributes['email'] = $value;
     }
     
-    public function getEmailVerifiedAt(): ?\Carbon\Carbon
+    public function getEmailVerifiedAt(): ?Carbon
     {
-        return $this->attributes['email_verified_at'] ? \Carbon\Carbon::parse($this->attributes['email_verified_at']) : null;
+        return $this->attributes['email_verified_at'] ? Carbon::parse($this->attributes['email_verified_at']) : null;
     }
     
-    public function setEmailVerifiedAt(?\Carbon\Carbon $value): void
+    public function setEmailVerifiedAt(?Carbon $value): void
     {
         $this->attributes['email_verified_at'] = $value;
     }
@@ -97,12 +98,12 @@ class User extends Model implements AuthenticatableContract
         return $this->attributes['remember_token'];
     }
     
-    public function getDeletedAt(): ?\Carbon\Carbon
+    public function getDeletedAt(): ?Carbon
     {
-        return $this->attributes['deleted_at'] ? \Carbon\Carbon::parse($this->attributes['deleted_at']) : null;
+        return $this->attributes['deleted_at'] ? Carbon::parse($this->attributes['deleted_at']) : null;
     }
     
-    public function setDeletedAt(?\Carbon\Carbon $value): void
+    public function setDeletedAt(?Carbon $value): void
     {
         $this->attributes['deleted_at'] = $value;
     }
@@ -117,13 +118,13 @@ class User extends Model implements AuthenticatableContract
         $this->attributes['is_admin'] = $value;
     }
     
-    public function getCreatedAt(): \Carbon\Carbon
+    public function getCreatedAt(): Carbon
     {
-        return \Carbon\Carbon::parse($this->attributes['created_at']);
+        return Carbon::parse($this->attributes['created_at']);
     }
     
-    public function getUpdatedAt(): \Carbon\Carbon
+    public function getUpdatedAt(): Carbon
     {
-        return \Carbon\Carbon::parse($this->attributes['updated_at']);
+        return Carbon::parse($this->attributes['updated_at']);
     }
 }
