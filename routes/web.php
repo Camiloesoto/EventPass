@@ -40,6 +40,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/events/{event}/purchase', [TicketController::class, 'purchase'])->name('events.purchase');
     Route::get('/tickets/{ticket}/qr', [TicketController::class, 'showQr'])->name('tickets.qr');
     Route::get('/tickets/{ticket}/download', [TicketController::class, 'download'])->name('tickets.download');
+    Route::post('/tickets/{ticket}/transfer', [TicketController::class, 'transfer'])->name('tickets.transfer');
 });
 
 Route::post('/events/{event}/waitlist', [WaitlistController::class, 'store'])

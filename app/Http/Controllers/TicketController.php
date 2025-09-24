@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Ticket;
 use App\Models\TicketType;
+use App\Models\User;
 use App\Enums\OrderStatus;
 use App\Enums\TicketStatus;
 use Illuminate\Http\Request;
@@ -174,6 +175,47 @@ class TicketController extends Controller
         return response($content)
             ->header('Content-Type', 'text/plain')
             ->header('Content-Disposition', 'attachment; filename="ticket-' . $ticket->getCode() . '.txt"');
+    }
+
+    public function transfer(Request $request, Ticket $ticket)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        try {
+            // Find the user to transfer to
+            $newUser = User::where('email', $request->email)->first();
+            
+            if (!$newUser) {
+                return back()->withErrors(['email' => 'User not found.']);
+            }
+
+            // Transfer the ticket
+            $ticket->setUserId($newUser->getId());
+            $ticket->setStatus(TicketStatus::transferred);
+            $ticket->save();
+
+            Log::info('Ticket transferred', [
+                'ticket_id' => $ticket->getId(),
+                'from_user_id' => Auth::id(),
+                'to_user_id' => $newUser->getId(),
+                'to_email' => $request->email,
+            ]);
+
+            return redirect()->route('tickets.index')
+                ->with('success', 'Ticket transferred successfully to ' . $newUser->getName() . '!');
+
+        } catch (\Exception $e) {
+            Log::error('Ticket transfer failed', [
+                'ticket_id' => $ticket->getId(),
+                'from_user_id' => Auth::id(),
+                'to_email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['email' => 'Failed to transfer ticket: ' . $e->getMessage()]);
+        }
     }
 
     private function generateUniqueTicketCode(int $orderId, int $ticketNumber): string
