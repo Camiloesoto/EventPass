@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Enums\TicketStatus;
+use App\Jobs\GenerateTicketArtifacts;
+use App\Models\{Ticket, TicketCheckin, User};
 use App\Services\TicketService;
-use App\Models\{Ticket, User, TicketCheckin};
 use DomainException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Tests\TestCase;
 
 class TicketServiceTest extends TestCase
 {
@@ -14,45 +17,73 @@ class TicketServiceTest extends TestCase
 
     public function test_issue_generates_identifiers(): void
     {
-        $u = User::factory()->create();
-        $t = app(TicketService::class)->issue($u->id, ['seat'=>'B2']);
-        $this->assertNotNull($t->code);
-        $this->assertNotNull($t->qr_hash);
-        $this->assertEquals(Ticket::STATUS_ISSUED, $t->status);
-        $this->assertDatabaseHas('tickets', ['id'=>$t->id,'status'=>Ticket::STATUS_ISSUED]);
+        $user = User::factory()->create();
+        $ticket = app(TicketService::class)->issue($user->id, ['seat' => 'B2']);
+
+        $this->assertNotNull($ticket->code);
+        $this->assertNotNull($ticket->qr_code_hash);
+        $this->assertTrue($ticket->status === TicketStatus::issued);
+        $this->assertDatabaseHas('tickets', ['id' => $ticket->id, 'status' => TicketStatus::issued->value]);
+    }
+
+    public function test_issue_dispatches_artifact_generation_job(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $ticket = app(TicketService::class)->issue($user->id, []);
+
+        Bus::assertDispatched(GenerateTicketArtifacts::class, function ($job) use ($ticket) {
+            return $job->ticketId === $ticket->id;
+        });
     }
 
     public function test_transfer_updates_owner_and_status(): void
     {
-        $t = Ticket::factory()->create();
-        $to = User::factory()->create();
-        $t = app(TicketService::class)->transfer($t, $to->id);
-        $this->assertEquals($to->id, $t->user_id);
-        $this->assertEquals(Ticket::STATUS_TRANSFERRED, $t->status);
+        $ticket = Ticket::factory()->create();
+        $recipient = User::factory()->create();
+
+        $ticket = app(TicketService::class)->transfer($ticket, $recipient->id);
+
+        $this->assertEquals($recipient->id, $ticket->user_id);
+        $this->assertTrue($ticket->status === TicketStatus::transferred);
     }
 
     public function test_redeem_creates_checkin_and_is_idempotent(): void
     {
         $scanner = User::factory()->create();
-        $t = Ticket::factory()->create();
+        $ticket = Ticket::factory()->create();
 
-        $first = app(TicketService::class)->redeemByHash($t->qr_hash, $scanner->id, 'ios', 'gate A');
-        $this->assertEquals(Ticket::STATUS_REDEEMED, $first->status);
+        $first = app(TicketService::class)->redeemByHash($ticket->qr_code_hash, $scanner->id, 'ios', 'gate A');
+        $this->assertTrue($first->status === TicketStatus::redeemed);
         $this->assertNotNull($first->redeemed_at);
         $this->assertDatabaseCount('ticket_checkins', 1);
 
-        $second = app(TicketService::class)->redeemByHash($t->qr_hash, $scanner->id, 'ios', 'gate A');
+        $second = app(TicketService::class)->redeemByHash($ticket->qr_code_hash, $scanner->id, 'ios', 'gate A');
         $this->assertEquals($first->id, $second->id);
-        $this->assertDatabaseCount('ticket_checkins', 1); // still one
+        $this->assertDatabaseCount('ticket_checkins', 1);
+    }
+
+    public function test_redeem_accepts_ticket_code(): void
+    {
+        $scanner = User::factory()->create();
+        $ticket = Ticket::factory()->create();
+
+        $result = app(TicketService::class)->redeemByIdentifier(strtolower($ticket->code), $scanner->id, 'android', 'gate B');
+
+        $this->assertTrue($result->status === TicketStatus::redeemed);
+        $this->assertNotNull($result->redeemed_at);
+        $this->assertDatabaseCount('ticket_checkins', 1);
     }
 
     public function test_revoke_blocks_redeem(): void
     {
-        $t = Ticket::factory()->create();
-        $t = app(TicketService::class)->revoke($t, 'duplicate');
+        $ticket = Ticket::factory()->create();
+        $ticket = app(TicketService::class)->revoke($ticket, 'duplicate');
 
-        $this->assertEquals(Ticket::STATUS_CANCELLED, $t->status);
+        $this->assertTrue($ticket->status === TicketStatus::cancelled);
         $this->expectException(DomainException::class);
-        app(TicketService::class)->redeemByHash($t->qr_hash, null, null, null);
+
+        app(TicketService::class)->redeemByHash($ticket->qr_code_hash, null, null, null);
     }
 }

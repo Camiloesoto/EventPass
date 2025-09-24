@@ -1,48 +1,129 @@
 <?php
-
 namespace App\Models;
 
+use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Support\Facades\Storage;
 
 class Ticket extends Model
 {
-    use HasFactory;
+    protected $table = 'tickets';
+    protected $fillable = ['order_item_id','user_id','qr_code_hash','pdf_url','status','redeemed_at'];
+    protected $casts = ['status' => TicketStatus::class, 'redeemed_at' => 'datetime'];
+    protected $dates = ['deleted_at'];
 
-    // statuses
-    public const STATUS_ISSUED      = 'issued';
-    public const STATUS_TRANSFERRED  = 'transferred';
-    public const STATUS_REDEEMED     = 'redeemed';
-    public const STATUS_CANCELLED    = 'cancelled';
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    protected $fillable = [
-        'user_id','code','qr_hash','status','redeemed_at','revoked_at','meta'
-    ];
-
-    protected $casts = [
-        'meta' => 'array',
-        'redeemed_at' => 'datetime',
-        'revoked_at'  => 'datetime',
-    ];
-
-    protected static function booted(): void
+    public function checkins(): HasMany
     {
-        static::creating(function (Ticket $t) {
-            $t->code   ??= Str::ulid()->toBase32();
-            $t->qr_hash??= hash('sha256', Str::uuid()->toString().random_bytes(16));
-            $t->status ??= self::STATUS_ISSUED;
-        });
+        return $this->hasMany(TicketCheckin::class);
     }
 
-    public function owner()    { return $this->belongsTo(User::class, 'user_id'); }
-    public function checkins() { return $this->hasMany(TicketCheckin::class); }
+    public function generateQrCode(): void
+    {
+        // integrate a QR lib; store hash/file
+    }
 
-    public function isRedeemed(): bool { return $this->redeemed_at !== null; }
-    public function isActive(): bool   { return $this->status !== self::STATUS_CANCELLED; }
+    public function generatePdf(): void
+    {
+        // integrate Dompdf/Snappy and save, update pdf_url
+    }
+
+    public function checkIn(): void
+    {
+        $this->setStatus(TicketStatus::redeemed);
+        $this->setRedeemedAt(now());
+        $this->save();
+    }
+    
+    /* ===================== Explicit Getters and Setters ===================== */
+    
+    public function getId(): int
+    {
+        return (int) $this->attributes['id'];
+    }
+    
+    public function setId(int $value): void
+    {
+        $this->attributes['id'] = $value;
+    }
+    
+    public function getOrderItemId(): int
+    {
+        return (int) $this->attributes['order_item_id'];
+    }
+    
+    public function setOrderItemId(int $value): void
+    {
+        $this->attributes['order_item_id'] = $value;
+    }
+    
+    public function getUserId(): int
+    {
+        return (int) $this->attributes['user_id'];
+    }
+    
+    public function setUserId(int $value): void
+    {
+        $this->attributes['user_id'] = $value;
+    }
+    
+    public function getQrCodeHash(): string
+    {
+        return (string) $this->attributes['qr_code_hash'];
+    }
+    
+    public function setQrCodeHash(string $value): void
+    {
+        $this->attributes['qr_code_hash'] = $value;
+    }
+    
+    public function getPdfUrl(): string
+    {
+        return (string) $this->attributes['pdf_url'];
+    }
+    
+    public function setPdfUrl(string $value): void
+    {
+        $this->attributes['pdf_url'] = $value;
+    }
+    
+    public function getStatus(): TicketStatus
+    {
+        return TicketStatus::from($this->attributes['status']);
+    }
+    
+    public function setStatus(TicketStatus $value): void
+    {
+        $this->attributes['status'] = $value->value;
+    }
+    
+    public function getRedeemedAt(): ?\Carbon\Carbon
+    {
+        return $this->attributes['redeemed_at'] ? \Carbon\Carbon::parse($this->attributes['redeemed_at']) : null;
+    }
+    
+    public function setRedeemedAt(?\Carbon\Carbon $value): void
+    {
+        $this->attributes['redeemed_at'] = $value;
+    }
+    
+    public function getCreatedAt(): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::parse($this->attributes['created_at']);
+    }
+    
+    public function getUpdatedAt(): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::parse($this->attributes['updated_at']);
+    }
 }

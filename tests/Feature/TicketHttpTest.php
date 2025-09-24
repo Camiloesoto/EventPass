@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use App\Enums\TicketStatus;
+use App\Models\{Ticket, User};
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Models\{User, Ticket};
+use Tests\TestCase;
 
 class TicketHttpTest extends TestCase
 {
@@ -12,47 +13,69 @@ class TicketHttpTest extends TestCase
 
     public function test_issue_endpoint_requires_auth(): void
     {
-        $this->postJson('/tickets', ['user_id'=>null,'meta'=>[]])->assertStatus(401);
+        $this->postJson('/tickets', ['user_id' => null, 'meta' => []])->assertStatus(401);
     }
 
     public function test_issue_transfer_redeem_revoke_happy_path(): void
     {
-        $owner  = User::factory()->create();
-        $staff  = User::factory()->create();
+        $owner = User::factory()->create();
+        $staff = User::factory()->create();
         $target = User::factory()->create();
 
-        // Issue
-        $res = $this->actingAs($owner)
-            ->postJson('/tickets', ['user_id'=>$owner->id,'meta'=>['seat'=>'C3']])
+        $response = $this->actingAs($owner)
+            ->postJson('/tickets', ['user_id' => $owner->id, 'meta' => ['seat' => 'C3']])
             ->assertCreated()
             ->json();
-        $ticketId = $res['id'];
+        $ticketId = $response['id'];
 
-        // Show
         $this->actingAs($owner)->getJson("/tickets/{$ticketId}")
             ->assertOk()->assertJsonPath('id', $ticketId);
 
-        // Transfer
-        $this->actingAs($owner)->postJson("/tickets/{$ticketId}/transfer", ['to_user_id'=>$target->id])
+        $this->actingAs($owner)->postJson("/tickets/{$ticketId}/transfer", ['to_user_id' => $target->id])
             ->assertOk()->assertJsonPath('user_id', $target->id);
 
-        // Redeem (staff)
-        $qr = Ticket::find($ticketId)->qr_hash;
+        $hash = Ticket::find($ticketId)->qr_code_hash;
         $this->actingAs($staff)
-            ->postJson('/tickets/redeem', ['qr_hash'=>$qr], ['X-Device'=>'scanner1','X-Location'=>'gate A'])
-            ->assertOk()->assertJsonPath('status', Ticket::STATUS_REDEEMED);
+            ->postJson('/tickets/redeem', ['qr_code_hash' => $hash], ['X-Device' => 'scanner1', 'X-Location' => 'gate A'])
+            ->assertOk()->assertJsonPath('status', TicketStatus::redeemed->value);
 
-        // Revoke should now fail due to policy owner mismatch
         $this->actingAs($owner)->postJson("/tickets/{$ticketId}/revoke")->assertForbidden();
     }
 
     public function test_owner_can_revoke_before_redeem(): void
     {
         $owner = User::factory()->create();
-        $ticket = Ticket::factory()->for($owner, 'owner')->create(); // uses owner() relation alias if defined; else set user_id below
-        $ticket->user_id = $owner->id; $ticket->save();
+        $ticket = Ticket::factory()->for($owner, 'owner')->create();
+        $ticket->user_id = $owner->id;
+        $ticket->save();
 
         $this->actingAs($owner)->postJson("/tickets/{$ticket->id}/revoke")
-            ->assertOk()->assertJsonPath('status', Ticket::STATUS_CANCELLED);
+            ->assertOk()->assertJsonPath('status', TicketStatus::cancelled->value);
+    }
+
+    public function test_transfer_by_email_assigns_new_owner(): void
+    {
+        $owner = User::factory()->create();
+        $recipient = User::factory()->create();
+        $ticket = Ticket::factory()->for($owner, 'owner')->create();
+        $ticket->user_id = $owner->id;
+        $ticket->save();
+
+        $this->actingAs($owner)
+            ->postJson("/tickets/{$ticket->id}/transfer", ['to_email' => strtoupper($recipient->email)])
+            ->assertOk()
+            ->assertJsonPath('user_id', $recipient->id)
+            ->assertJsonPath('status', TicketStatus::transferred->value);
+    }
+
+    public function test_staff_can_redeem_using_ticket_code(): void
+    {
+        $staff = User::factory()->create();
+        $ticket = Ticket::factory()->create();
+
+        $this->actingAs($staff)
+            ->postJson('/tickets/redeem', ['qr_code_hash' => strtolower($ticket->code)])
+            ->assertOk()
+            ->assertJsonPath('status', TicketStatus::redeemed->value);
     }
 }

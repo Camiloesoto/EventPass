@@ -2,172 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\WaitlistStatus;
 use App\Models\Event;
 use App\Models\WaitlistEntry;
-use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
-/**
- * @author Camilo Polanía
- * @date 2024-01-15
- * Descripción: Controlador para gestión de lista de espera
- */
 class WaitlistController extends Controller
 {
-    /**
-     * Agregar usuario a la lista de espera
-     *
-     * @param Request $request
-     * @param Event $evento
-     * @return RedirectResponse|JsonResponse
-     */
-    public function agregar(Request $request, Event $evento): RedirectResponse|JsonResponse
+    public function store(Request $request, Event $event): JsonResponse|RedirectResponse
     {
-        $request->validate([
-            'usuario_id' => 'required|integer|exists:users,id'
-        ]);
-
-        // Verificar si el usuario ya está en la lista de espera
-        $entradaExistente = WaitlistEntry::where('evento_id', $evento->id)
-            ->where('usuario_id', $request->usuario_id)
-            ->first();
-
-        if ($entradaExistente) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Ya estás en la lista de espera para este evento'], 422);
-            }
-            
-            return redirect()
-                ->back()
-                ->with('error', 'Ya estás en la lista de espera para este evento');
+        $user = $request->user();
+        if (!$user) {
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Unauthorized'], 401)
+                : redirect()->route('login');
         }
 
-        // Verificar si el evento tiene capacidad disponible
-        if (!$evento->estaAgotado()) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'El evento aún tiene capacidad disponible'], 422);
-            }
-            
-            return redirect()
-                ->back()
-                ->with('error', 'El evento aún tiene capacidad disponible');
+        $entry = WaitlistEntry::firstOrCreate(
+            ['user_id' => $user->id, 'event_id' => $event->id],
+            ['status' => WaitlistStatus::waiting]
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'entry' => $entry], 201);
         }
 
-        // Agregar a la lista de espera
-        WaitlistEntry::create([
-            'usuario_id' => $request->usuario_id,
-            'evento_id' => $evento->id,
-            'estado' => 'esperando'
-        ]);
-
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Te has unido a la lista de espera exitosamente']);
-        }
-
-        return redirect()
-            ->back()
-            ->with('success', 'Te has unido a la lista de espera exitosamente.');
-    }
-
-    /**
-     * Remover usuario de la lista de espera
-     *
-     * @param Request $request
-     * @param Event $evento
-     * @return RedirectResponse|JsonResponse
-     */
-    public function remover(Request $request, Event $evento): RedirectResponse|JsonResponse
-    {
-        $request->validate([
-            'usuario_id' => 'required|integer|exists:users,id'
-        ]);
-
-        $entrada = WaitlistEntry::where('evento_id', $evento->id)
-            ->where('usuario_id', $request->usuario_id)
-            ->first();
-
-        if (!$entrada) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'No estás en la lista de espera para este evento'], 404);
-            }
-            
-            return redirect()
-                ->back()
-                ->with('error', 'No estás en la lista de espera para este evento');
-        }
-
-        $entrada->delete();
-
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Te has removido de la lista de espera exitosamente']);
-        }
-
-        return redirect()
-            ->back()
-            ->with('success', 'Te has removido de la lista de espera exitosamente.');
-    }
-
-    /**
-     * Mostrar lista de espera de un evento
-     *
-     * @param Event $evento
-     * @return View
-     */
-    public function mostrar(Event $evento): JsonResponse
-    {
-        $entradas = WaitlistEntry::where('evento_id', $evento->id)
-            ->with('usuario')
-            ->orderBy('created_at')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'evento' => [
-                    'id' => $evento->id,
-                    'nombre' => $evento->getNombre(),
-                    'capacidad' => $evento->getCapacidad(),
-                    'capacidad_disponible' => $evento->capacidadDisponible(),
-                ],
-                'entradas_lista_espera' => $entradas->map(function ($entrada) {
-                    return [
-                        'id' => $entrada->id,
-                        'usuario_id' => $entrada->getUsuarioId(),
-                        'usuario_nombre' => $entrada->usuario ? $entrada->usuario->name : 'N/A',
-                        'estado' => $entrada->getEstado(),
-                        'fecha_notificacion' => $entrada->getFechaNotificacion() ? $entrada->getFechaNotificacion()->format('Y-m-d H:i:s') : null,
-                        'created_at' => $entrada->created_at,
-                    ];
-                }),
-                'total_entradas' => $entradas->count()
-            ]
-        ]);
-    }
-
-    /**
-     * Notificar usuarios en lista de espera
-     *
-     * @param Event $evento
-     * @return RedirectResponse
-     */
-    public function notificar(Event $evento): RedirectResponse
-    {
-        $entradasEsperando = WaitlistEntry::where('evento_id', $evento->id)
-            ->where('estado', 'esperando')
-            ->limit($evento->capacidadDisponible())
-            ->get();
-
-        $notificados = 0;
-        foreach ($entradasEsperando as $entrada) {
-            if ($entrada->notificarUsuario()) {
-                $notificados++;
-            }
-        }
-
-        return redirect()
-            ->back()
-            ->with('success', "Se notificaron {$notificados} usuarios de la lista de espera.");
+        return back()->with('status', 'You have been added to the waitlist.');
     }
 }

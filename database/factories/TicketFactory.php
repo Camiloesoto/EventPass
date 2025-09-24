@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Ticket;
-use App\Models\User;
+use App\Enums\TicketStatus;
+use App\Models\{OrderItem, Ticket, User};
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class TicketFactory extends Factory
@@ -13,10 +13,11 @@ class TicketFactory extends Factory
     public function definition(): array
     {
         return [
+            'order_item_id' => OrderItem::factory(),
             'user_id' => User::factory(),
-            'status'  => Ticket::STATUS_ISSUED,
-            'meta'    => ['seat'=>'A1'],
-            // omit code and qr_hash => model boot fills them
+            'pdf_url' => '#',
+            'status' => TicketStatus::issued,
+            'meta' => ['seat' => 'A1'],
         ];
     }
 }

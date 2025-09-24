@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'public' => env('STRIPE_PUBLIC'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'admin' => [
+        // Comma-separated list of admin emails in .env, e.g. ADMIN_EMAILS="admin@eventpass.test,owner@example.com"
+        'emails' => array_values(array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', 'admin@eventpass.test'))))),
+    ],
+
 ];

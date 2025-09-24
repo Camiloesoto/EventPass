@@ -39,13 +39,19 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request)
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        // If this is an Inertia-triggered request, force a full browser redirect
+        // to the non-Inertia landing page to avoid rendering Blade inside the SPA shell.
+        if ($request->header('X-Inertia')) {
+            return Inertia::location(route('home'));
+        }
+
+        return redirect()->route('home');
     }
 }

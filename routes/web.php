@@ -1,48 +1,67 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use App\Http\Controllers\{TicketController, TicketScanController, EventController, WaitlistController};
-
-Route::middleware('auth')->group(function () {
-  Route::post('/tickets', [TicketController::class,'store']);            // issue
-  Route::get('/tickets/{ticket}', [TicketController::class,'show']);     // show
-  Route::post('/tickets/{ticket}/transfer', [TicketController::class,'transfer']);
-  Route::post('/tickets/{ticket}/revoke',   [TicketController::class,'revoke']);
-
-  Route::post('/tickets/redeem', [TicketScanController::class,'redeem']); // by qr_hash
-});
+use App\Enums\EventStatus;
+use App\Http\Controllers\{
+    DashboardController,
+    EventController,
+    OrderController,
+    PaymentController,
+    StripeWebhookController,
+    TicketAdminController,
+    TicketController,
+    WaitlistController,
+};
+use App\Models\Event;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    $events = Event::query()
+        ->where('status', EventStatus::published->value)
+        ->where('start_time', '>=', now())
+        ->orderBy('start_time')
+        ->limit(6)
+        ->get();
+
+    return view('landing', ['events' => $events]);
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+Route::resource('events', EventController::class)->only(['index','create','store','show','edit','update','destroy']);
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/{order}/checkout', [OrderController::class, 'checkout'])->name('orders.checkout');
+
+    Route::post('/orders/{order}/payments', [PaymentController::class, 'store'])->name('orders.payments.store');
+    Route::post('/orders/{order}/pay/stripe', [PaymentController::class, 'stripeCheckout'])->name('orders.payments.stripe.checkout');
+    Route::get('/orders/{order}/pay/stripe/success', [PaymentController::class, 'stripeSuccess'])->name('orders.payments.stripe.success');
+    Route::get('/orders/{order}/pay/stripe/cancel', [PaymentController::class, 'stripeCancel'])->name('orders.payments.stripe.cancel');
+
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/{ticket}/download', [TicketController::class, 'download'])->name('tickets.download');
+    Route::get('/tickets/{ticket}/qr', [TicketController::class, 'qr'])->name('tickets.qr');
 });
 
-require __DIR__.'/settings.php';
+Route::post('/events/{event}/waitlist', [WaitlistController::class, 'store'])
+    ->middleware('auth')
+    ->name('events.waitlist.store');
+
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
+    ->name('stripe.webhook')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::middleware(['auth','can:access-admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/tickets', [TicketAdminController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/scan', [TicketAdminController::class, 'scan'])->name('tickets.scan');
+        Route::post('/tickets', [TicketAdminController::class, 'store'])->name('tickets.store');
+        Route::put('/tickets/{ticket}', [TicketAdminController::class, 'update'])->name('tickets.update');
+        Route::delete('/tickets/{ticket}', [TicketAdminController::class, 'destroy'])->name('tickets.destroy');
+        Route::post('/tickets/redeem', [TicketAdminController::class, 'redeem'])->name('tickets.redeem');
+    });
+
+Route::middleware(['auth','verified'])->get('/dashboard', DashboardController::class)->name('dashboard');
+
 require __DIR__.'/auth.php';
-
-// Rutas de eventos
-Route::prefix('eventos')->name('eventos.')->group(function () {
-    Route::get('/', [EventController::class, 'index'])->name('index');
-    Route::get('disponibles', [EventController::class, 'disponibles'])->name('disponibles');
-    Route::get('crear', [EventController::class, 'create'])->name('create');
-    Route::post('/', [EventController::class, 'store'])->name('store');
-    Route::get('{evento}', [EventController::class, 'show'])->name('show');
-    Route::get('{evento}/editar', [EventController::class, 'edit'])->name('edit');
-    Route::put('{evento}', [EventController::class, 'update'])->name('update');
-    Route::delete('{evento}', [EventController::class, 'destroy'])->name('destroy');
-    Route::get('{evento}/reporte', [EventController::class, 'reporte'])->name('reporte');
-});
-
-// Rutas de lista de espera
-Route::prefix('lista-espera')->name('waitlist.')->group(function () {
-    Route::post('{evento}/agregar', [WaitlistController::class, 'agregar'])->name('agregar');
-    Route::delete('{evento}/remover', [WaitlistController::class, 'remover'])->name('remover');
-    Route::get('{evento}/mostrar', [WaitlistController::class, 'mostrar'])->name('mostrar');
-    Route::post('{evento}/notificar', [WaitlistController::class, 'notificar'])->name('notificar');
-});
+require __DIR__.'/settings.php';

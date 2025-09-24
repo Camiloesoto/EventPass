@@ -2,278 +2,144 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\EventStatus;
+use App\Enums\OrderStatus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon; // Import Carbon for datetime casting
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Carbon\Carbon;
 
-/**
- * @author Camilo Polanía
- * @date 2024-01-15
- * Descripción: Modelo para gestión de eventos del sistema EventPass
- */
 class Event extends Model
 {
-    use HasFactory, SoftDeletes;
+    protected $table = 'events';
+    protected $fillable = ['venue_id','name','description','start_time','end_time','capacity','status'];
+    protected $casts = ['start_time' => 'datetime', 'end_time' => 'datetime', 'status' => EventStatus::class];
+    protected $dates = ['deleted_at'];
 
-    /**
-     * Los atributos que son asignables en masa.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'nombre',
-        'descripcion',
-        'fecha_inicio',
-        'fecha_fin',
-        'capacidad',
-        'estado',
-    ];
-
-    /**
-     * Los atributos que deben ser casteados.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'fecha_inicio' => 'datetime',
-        'fecha_fin' => 'datetime',
-        'capacidad' => 'integer',
-    ];
-
-    /**
-     * GETTERS - Obtener valores de atributos
-     */
-
-    /**
-     * Obtener el nombre del evento
-     *
-     * @return string
-     */
-    public function getNombre(): string
+    /* =====================
+       Relaciones (UML)
+       ===================== */
+    public function venue(): BelongsTo
     {
-        return $this->attributes['nombre'];
+        return $this->belongsTo(Venue::class);
     }
 
-    /**
-     * Obtener la descripción del evento
-     *
-     * @return string
-     */
-    public function getDescripcion(): string
+    public function ticketTypes(): HasMany
     {
-        return $this->attributes['descripcion'];
+        return $this->hasMany(TicketType::class);
     }
 
-    /**
-     * Obtener la fecha de inicio del evento
-     *
-     * @return Carbon
-     */
-    public function getFechaInicio(): Carbon
+    public function waitlistEntries(): HasMany
     {
-        return $this->fecha_inicio;
+        return $this->hasMany(WaitlistEntry::class);
     }
 
-    /**
-     * Obtener la fecha de fin del evento
-     *
-     * @return Carbon
-     */
-    public function getFechaFin(): Carbon
+    /* =====================
+       Métodos de negocio (UML)
+       ===================== */
+    public function availableCapacity(): int
     {
-        return $this->fecha_fin;
+        $total = (int) $this->ticketTypes()->sum('quantity');
+        $sold = (int) DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('ticket_types', 'ticket_types.id', '=', 'order_items.ticket_type_id')
+            ->where('ticket_types.event_id', $this->id)
+            ->where('orders.status', OrderStatus::paid->value)
+            ->sum('order_items.quantity');
+
+        return max(0, $total - $sold);
     }
 
-    /**
-     * Obtener la capacidad del evento
-     *
-     * @return int
-     */
-    public function getCapacidad(): int
+    public function getAvailableCapacityAttribute(): int
     {
-        return $this->attributes['capacidad'];
+        return $this->availableCapacity();
     }
 
-    /**
-     * Obtener el estado del evento
-     *
-     * @return string
-     */
-    public function getEstado(): string
+    public function isSoldOut(): bool
     {
-        return $this->attributes['estado'];
+        return $this->availableCapacity() <= 0;
     }
 
-    /**
-     * SETTERS - Establecer valores de atributos
-     */
-
-    /**
-     * Establecer el nombre del evento
-     *
-     * @param string $nombre
-     * @return void
-     */
-    public function setNombre(string $nombre): void
+    public function salesReport()
     {
-        $this->attributes['nombre'] = trim($nombre);
-    }
-
-    /**
-     * Establecer la descripción del evento
-     *
-     * @param string $descripcion
-     * @return void
-     */
-    public function setDescripcion(string $descripcion): void
-    {
-        $this->attributes['descripcion'] = trim($descripcion);
-    }
-
-    /**
-     * Establecer la fecha de inicio del evento
-     *
-     * @param Carbon|string $fechaInicio
-     * @return void
-     */
-    public function setFechaInicio($fechaInicio): void
-    {
-        $this->attributes['fecha_inicio'] = $fechaInicio instanceof Carbon ? $fechaInicio : Carbon::parse($fechaInicio);
-    }
-
-    /**
-     * Establecer la fecha de fin del evento
-     *
-     * @param Carbon|string $fechaFin
-     * @return void
-     */
-    public function setFechaFin($fechaFin): void
-    {
-        $this->attributes['fecha_fin'] = $fechaFin instanceof Carbon ? $fechaFin : Carbon::parse($fechaFin);
-    }
-
-    /**
-     * Establecer la capacidad del evento
-     *
-     * @param int $capacidad
-     * @return void
-     */
-    public function setCapacidad(int $capacidad): void
-    {
-        $this->attributes['capacidad'] = max(1, $capacidad);
-    }
-
-    /**
-     * Establecer el estado del evento
-     *
-     * @param string $estado
-     * @return void
-     */
-    public function setEstado(string $estado): void
-    {
-        $estadosValidos = ['borrador', 'publicado', 'cancelado', 'completado'];
-        if (in_array($estado, $estadosValidos)) {
-            $this->attributes['estado'] = $estado;
-        }
-    }
-
-    /**
-     * RELACIONES
-     */
-
-    /**
-     * Relación: Un evento tiene muchos tickets
-     *
-     * @return HasMany
-     */
-    public function tickets(): HasMany
-    {
-        return $this->hasMany(Ticket::class, 'evento_id');
-    }
-
-    /**
-     * Relación: Un evento tiene muchas entradas en la lista de espera
-     *
-     * @return HasMany
-     */
-    public function entradasListaEspera(): HasMany
-    {
-        return $this->hasMany(WaitlistEntry::class, 'evento_id');
-    }
-
-    /**
-     * MÉTODOS DE NEGOCIO
-     */
-
-    /**
-     * Obtener la capacidad disponible del evento
-     *
-     * @return int
-     */
-    public function capacidadDisponible(): int
-    {
-        // Calcular capacidad disponible basada en tickets vendidos
-        $ticketsVendidos = $this->tickets()->sum('cantidad_vendida');
-        return max(0, $this->capacidad - $ticketsVendidos);
-    }
-
-    /**
-     * Verificar si el evento está agotado
-     *
-     * @return bool
-     */
-    public function estaAgotado(): bool
-    {
-        return $this->capacidadDisponible() <= 0;
-    }
-
-    /**
-     * Generar reporte de ventas del evento
-     *
-     * @return array
-     */
-    public function reporteVentas(): array
-    {
-        $ticketsVendidos = $this->tickets()->sum('cantidad_vendida');
-        $ingresosTotales = $this->tickets()->get()->sum(function ($ticket) {
-            return $ticket->cantidad_vendida * $ticket->precio;
-        });
-
-        return [
-            'capacidad_total' => $this->capacidad,
-            'capacidad_disponible' => $this->capacidadDisponible(),
-            'tickets_vendidos' => $ticketsVendidos,
-            'porcentaje_ocupacion' => $this->capacidad > 0 ? round(($ticketsVendidos / $this->capacidad) * 100, 2) : 0,
-            'ingresos_totales' => $ingresosTotales
+        return (object)[
+            'event_id' => $this->id,
+            'sold'     => (int) $this->ticketTypes()->sum('quantity'),
+            'revenue'  => (float) $this->ticketTypes()->sum('price'),
         ];
     }
 
-    /**
-     * SCOPES - Consultas predefinidas
-     */
-
-    /**
-     * Scope para eventos publicados
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopePublicados($query)
+    protected function availableCapacityText(): Attribute
     {
-        return $query->where('estado', 'publicado');
+        return Attribute::make(get: fn() => $this->availableCapacity().' seats');
     }
 
-    /**
-     * Scope para eventos disponibles
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeDisponibles($query)
+    /* =====================
+       Getters/Setters explícitos (para la rúbrica)
+       ===================== */
+    public function getName(): string
     {
-        return $query->where('estado', 'publicado')
-                    ->where('fecha_inicio', '>', now());
+        return (string) $this->attributes['name'];
+    }
+
+    public function setName(string $value): void
+    {
+        $this->attributes['name'] = $value;
+    }
+
+    public function getDescription(): string
+    {
+        return (string) ($this->attributes['description'] ?? '');
+    }
+
+    public function setDescription(string $value): void
+    {
+        $this->attributes['description'] = $value;
+    }
+
+    public function getStartTime(): Carbon
+    {
+        return Carbon::parse($this->attributes['start_time']);
+    }
+
+    public function setStartTime(Carbon $value): void
+    {
+        $this->attributes['start_time'] = $value;
+    }
+
+    public function getEndTime(): Carbon
+    {
+        return Carbon::parse($this->attributes['end_time']);
+    }
+
+    public function setEndTime(Carbon $value): void
+    {
+        $this->attributes['end_time'] = $value;
+    }
+
+    public function getCapacity(): int
+    {
+        return (int) $this->attributes['capacity'];
+    }
+
+    public function setCapacity(int $value): void
+    {
+        $this->attributes['capacity'] = $value;
+    }
+
+    public function getStatus()
+    {
+        return $this->attributes['status'];
+    }
+
+    public function setStatus($value): void
+    {
+        $this->attributes['status'] = $value;
+    }
+
+    public function getAvailableCapacityText(): string
+    {
+        return $this->availableCapacity().' seats';
     }
 }

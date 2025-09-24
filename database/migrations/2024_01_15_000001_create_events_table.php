@@ -6,30 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('events', function (Blueprint $table) {
-            $table->id();
-            $table->string('nombre');
-            $table->text('descripcion');
-            $table->datetime('fecha_inicio');
-            $table->datetime('fecha_fin');
-            $table->integer('capacidad');
-            $table->enum('estado', ['borrador', 'publicado', 'cancelado', 'completado'])->default('borrador');
-            $table->timestamps();
-            $table->softDeletes();
-
-            // Índices para optimización
-            $table->index(['estado', 'fecha_inicio']);
+        if (Schema::hasTable('events')) { return; }
+        Schema::create('events', function (Blueprint $t) {
+            $t->id();
+            $t->foreignId('venue_id')->nullable()->constrained('venues')->nullOnDelete();
+            $t->string('name');
+            $t->text('description');
+            $t->dateTime('start_time');
+            $t->dateTime('end_time');
+            $t->unsignedInteger('capacity');
+            $t->string('status');
+            $t->softDeletes();
+            $t->timestamps();
+            $t->index(['start_time', 'status']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('events');

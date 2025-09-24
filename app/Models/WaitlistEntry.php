@@ -2,234 +2,77 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\WaitlistStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Notifications\Notifiable;
 
-/**
- * @author Camilo Polanía
- * @date 2024-01-15
- * Descripción: Modelo para gestión de lista de espera de eventos
- */
 class WaitlistEntry extends Model
 {
-    use HasFactory;
+    use Notifiable;
 
-    /**
-     * Los atributos que son asignables en masa.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'usuario_id',
-        'evento_id',
-        'estado',
-        'fecha_notificacion',
-    ];
+    protected $table = 'waitlist_entries';
+    protected $fillable = ['user_id','event_id','status','notified_at'];
+    protected $casts = ['status' => WaitlistStatus::class, 'notified_at' => 'datetime'];
 
-    /**
-     * Los atributos que deben ser casteados.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'fecha_notificacion' => 'datetime',
-    ];
-
-    /**
-     * GETTERS - Obtener valores de atributos
-     */
-
-    /**
-     * Obtener el ID del usuario
-     *
-     * @return int
-     */
-    public function getUsuarioId(): int
+    public function user(): BelongsTo
     {
-        return $this->attributes['usuario_id'];
+        return $this->belongsTo(User::class);
     }
 
-    /**
-     * Obtener el ID del evento
-     *
-     * @return int
-     */
-    public function getEventoId(): int
+    public function event(): BelongsTo
     {
-        return $this->attributes['evento_id'];
+        return $this->belongsTo(Event::class);
     }
 
-    /**
-     * Obtener el estado de la entrada
-     *
-     * @return string
-     */
-    public function getEstado(): string
+    /* UML: notifyUser(): void */
+    public function notifyUser(): void
     {
-        return $this->attributes['estado'];
+        // Implementa tu notificación real (Notification, Mail, etc.)
+        // $this->notify(new WaitlistSpotsAvailableNotification($this->event));
+        $this->update(['notified_at' => now()]);
     }
 
-    /**
-     * Obtener la fecha de notificación
-     *
-     * @return \Carbon\Carbon|null
-     */
-    public function getFechaNotificacion(): ?\Carbon\Carbon
+    /* =====================
+       Getters/Setters explícitos (para la rúbrica)
+       ===================== */
+    public function getStatus()
     {
-        return $this->attributes['fecha_notificacion'];
+        return $this->attributes['status'] ?? null;
     }
 
-    /**
-     * SETTERS - Establecer valores de atributos
-     */
-
-    /**
-     * Establecer el ID del usuario
-     *
-     * @param int $usuarioId
-     * @return void
-     */
-    public function setUsuarioId(int $usuarioId): void
+    public function setStatus($value): void
     {
-        $this->attributes['usuario_id'] = $usuarioId;
+        $this->attributes['status'] = $value;
     }
 
-    /**
-     * Establecer el ID del evento
-     *
-     * @param int $eventoId
-     * @return void
-     */
-    public function setEventoId(int $eventoId): void
+    public function getNotifiedAt()
     {
-        $this->attributes['evento_id'] = $eventoId;
+        return $this->attributes['notified_at'];
     }
 
-    /**
-     * Establecer el estado de la entrada
-     *
-     * @param string $estado
-     * @return void
-     */
-    public function setEstado(string $estado): void
+    public function setNotifiedAt($value): void
     {
-        $estadosValidos = ['esperando', 'notificado', 'convertido', 'expirado'];
-        if (in_array($estado, $estadosValidos)) {
-            $this->attributes['estado'] = $estado;
-        }
+        $this->attributes['notified_at'] = $value;
     }
 
-    /**
-     * Establecer la fecha de notificación
-     *
-     * @param \Carbon\Carbon|null $fechaNotificacion
-     * @return void
-     */
-    public function setFechaNotificacion(?\Carbon\Carbon $fechaNotificacion): void
+    public function getUserId(): int
     {
-        $this->attributes['fecha_notificacion'] = $fechaNotificacion;
+        return (int) $this->attributes['user_id'];
     }
 
-    /**
-     * RELACIONES
-     */
-
-    /**
-     * Relación: Una entrada de lista de espera pertenece a un evento
-     *
-     * @return BelongsTo
-     */
-    public function evento(): BelongsTo
+    public function setUserId(int $value): void
     {
-        return $this->belongsTo(Event::class, 'evento_id');
+        $this->attributes['user_id'] = $value;
     }
 
-    /**
-     * Relación: Una entrada de lista de espera pertenece a un usuario
-     *
-     * @return BelongsTo
-     */
-    public function usuario(): BelongsTo
+    public function getEventId(): int
     {
-        return $this->belongsTo(User::class, 'usuario_id');
+        return (int) $this->attributes['event_id'];
     }
 
-    /**
-     * MÉTODOS DE NEGOCIO
-     */
-
-    /**
-     * Notificar al usuario sobre disponibilidad
-     *
-     * @return bool
-     */
-    public function notificarUsuario(): bool
+    public function setEventId(int $value): void
     {
-        if ($this->estado === 'esperando' && $this->usuario) {
-            // Marcar como notificado
-            $this->update([
-                'estado' => 'notificado',
-                'fecha_notificacion' => now(),
-            ]);
-
-            // TODO: Implementar notificación con colas
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Marcar como convertido (cuando el usuario compra ticket)
-     *
-     * @return bool
-     */
-    public function marcarComoConvertido(): bool
-    {
-        if ($this->estado === 'notificado') {
-            $this->estado = 'convertido';
-            return $this->save();
-        }
-        return false;
-    }
-
-    /**
-     * SCOPES - Consultas predefinidas
-     */
-
-    /**
-     * Scope para entradas esperando
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeEsperando($query)
-    {
-        return $query->where('estado', 'esperando');
-    }
-
-    /**
-     * Scope para entradas notificadas
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeNotificadas($query)
-    {
-        return $query->where('estado', 'notificado');
-    }
-
-    /**
-     * Scope para entradas de un evento específico
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $eventoId
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeDelEvento($query, int $eventoId)
-    {
-        return $query->where('evento_id', $eventoId);
+        $this->attributes['event_id'] = $value;
     }
 }
