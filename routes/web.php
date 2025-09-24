@@ -33,6 +33,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/{order}/pay/stripe', [PaymentController::class, 'stripeCheckout'])->name('orders.payments.stripe.checkout');
     Route::get('/orders/{order}/pay/stripe/success', [PaymentController::class, 'stripeSuccess'])->name('orders.payments.stripe.success');
     Route::get('/orders/{order}/pay/stripe/cancel', [PaymentController::class, 'stripeCancel'])->name('orders.payments.stripe.cancel');
+    
+    // Tickets routes
+    Route::get('/tickets', function () {
+        $tickets = auth()->user()->tickets()->with(['orderItem.ticketType.event'])->paginate(10);
+        return view('tickets.index', compact('tickets'));
+    })->name('tickets.index');
+    
+    Route::get('/tickets/{ticket}/qr', function ($ticket) {
+        // Placeholder for QR code generation
+        return response()->json(['message' => 'QR code for ticket ' . $ticket]);
+    })->name('tickets.qr');
 });
 
 Route::post('/events/{event}/waitlist', [WaitlistController::class, 'store'])
