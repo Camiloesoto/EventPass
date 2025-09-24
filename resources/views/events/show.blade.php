@@ -135,6 +135,85 @@
             </div>
         </div>
     </div>
+
+    <!-- Ticket Purchase Section -->
+    @auth
+        @if(!auth()->user()->is_admin && $event->getStatus() === 'published')
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-ticket-alt"></i> Purchase Tickets
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if($event->ticketTypes->count() > 0)
+                                <form method="POST" action="{{ route('events.purchase', $event) }}">
+                                    @csrf
+                                    
+                                    <div class="row">
+                                        @foreach($event->ticketTypes as $ticketType)
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card border-primary">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">{{ $ticketType->getName() }}</h6>
+                                                        <p class="card-text">
+                                                            <strong>Price:</strong> ${{ number_format($ticketType->getPrice(), 2) }}<br>
+                                                            <strong>Available:</strong> {{ $ticketType->getQuantity() }} tickets
+                                                        </p>
+                                                        
+                                                        @if($ticketType->getQuantity() > 0)
+                                                            <div class="form-group">
+                                                                <label for="quantity_{{ $ticketType->getId() }}">Quantity:</label>
+                                                                <select name="ticket_types[{{ $loop->index }}][id]" class="form-control d-none">
+                                                                    <option value="{{ $ticketType->getId() }}"></option>
+                                                                </select>
+                                                                <select name="ticket_types[{{ $loop->index }}][quantity]" 
+                                                                        id="quantity_{{ $ticketType->getId() }}" 
+                                                                        class="form-control">
+                                                                    @for($i = 1; $i <= min(5, $ticketType->getQuantity()); $i++)
+                                                                        <option value="{{ $i }}">{{ $i }}</option>
+                                                                    @endfor
+                                                                </select>
+                                                            </div>
+                                                        @else
+                                                            <span class="badge badge-danger">Sold Out</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    
+                                    <div class="text-center mt-3">
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-shopping-cart"></i> Purchase Tickets
+                                        </button>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> No ticket types available for this event.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @else
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Want to purchase tickets?</h5>
+                        <p>Please <a href="{{ route('login') }}">login</a> or <a href="{{ route('register') }}">register</a> to purchase tickets.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endauth
 </div>
 
 <script>

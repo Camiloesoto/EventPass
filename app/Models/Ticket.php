@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class Ticket extends Model
 {
     protected $table = 'tickets';
-    protected $fillable = ['order_item_id','user_id','qr_code_hash','pdf_url','status','redeemed_at'];
+    protected $fillable = ['order_item_id','user_id','code','qr_code_hash','pdf_url','status','redeemed_at'];
     protected $casts = ['status' => TicketStatus::class, 'redeemed_at' => 'datetime'];
     protected $dates = ['deleted_at'];
 
@@ -57,9 +57,14 @@ class Ticket extends Model
         $this->attributes['id'] = $value;
     }
     
-    public function getOrderItemId(): int
+    public function getCode(): string
     {
-        return (int) $this->attributes['order_item_id'];
+        return (string) $this->attributes['code'];
+    }
+
+    public function setCode(string $value): void
+    {
+        $this->attributes['code'] = $value;
     }
     
     public function setOrderItemId(int $value): void

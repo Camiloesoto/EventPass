@@ -9,6 +9,7 @@ use App\Http\Controllers\{
     PaymentController,
     StripeWebhookController,
     WaitlistController,
+    TicketController,
 };
 use App\Models\Event;
 
@@ -35,15 +36,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/orders/{order}/pay/stripe/cancel', [PaymentController::class, 'stripeCancel'])->name('orders.payments.stripe.cancel');
     
     // Tickets routes
-    Route::get('/tickets', function () {
-        $tickets = auth()->user()->tickets()->with(['orderItem.ticketType.event'])->paginate(10);
-        return view('tickets.index', compact('tickets'));
-    })->name('tickets.index');
-    
-    Route::get('/tickets/{ticket}/qr', function ($ticket) {
-        // Placeholder for QR code generation
-        return response()->json(['message' => 'QR code for ticket ' . $ticket]);
-    })->name('tickets.qr');
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::post('/events/{event}/purchase', [TicketController::class, 'purchase'])->name('events.purchase');
+    Route::get('/tickets/{ticket}/qr', [TicketController::class, 'showQr'])->name('tickets.qr');
 });
 
 Route::post('/events/{event}/waitlist', [WaitlistController::class, 'store'])

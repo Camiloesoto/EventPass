@@ -11,7 +11,7 @@ return new class extends Migration
         if (Schema::hasTable('events')) { return; }
         Schema::create('events', function (Blueprint $t) {
             $t->id();
-            $t->foreignId('venue_id')->nullable()->constrained('venues')->nullOnDelete();
+            $t->unsignedBigInteger('venue_id')->nullable();
             $t->string('name');
             $t->text('description');
             $t->dateTime('start_time');
