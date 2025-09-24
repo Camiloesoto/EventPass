@@ -166,16 +166,16 @@
                                                         @if($ticketType->getQuantity() > 0)
                                                             <div class="form-group">
                                                                 <label for="quantity_{{ $ticketType->getId() }}">Quantity:</label>
-                                                                <select name="ticket_types[{{ $loop->index }}][id]" class="form-control d-none">
-                                                                    <option value="{{ $ticketType->getId() }}"></option>
-                                                                </select>
                                                                 <select name="ticket_types[{{ $loop->index }}][quantity]" 
                                                                         id="quantity_{{ $ticketType->getId() }}" 
-                                                                        class="form-control">
+                                                                        class="form-control ticket-quantity"
+                                                                        data-ticket-type="{{ $ticketType->getId() }}">
+                                                                    <option value="0">0</option>
                                                                     @for($i = 1; $i <= min(5, $ticketType->getQuantity()); $i++)
                                                                         <option value="{{ $i }}">{{ $i }}</option>
                                                                     @endfor
                                                                 </select>
+                                                                <input type="hidden" name="ticket_types[{{ $loop->index }}][id]" value="{{ $ticketType->getId() }}">
                                                             </div>
                                                         @else
                                                             <span class="badge badge-danger">Sold Out</span>

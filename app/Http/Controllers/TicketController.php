@@ -31,8 +31,21 @@ class TicketController extends Controller
         $request->validate([
             'ticket_types' => 'required|array|min:1',
             'ticket_types.*.id' => 'required|exists:ticket_types,id',
-            'ticket_types.*.quantity' => 'required|integer|min:1|max:10',
+            'ticket_types.*.quantity' => 'required|integer|min:0|max:10',
         ]);
+
+        // Custom validation: at least one ticket type must have quantity > 0
+        $hasValidQuantity = false;
+        foreach ($request->ticket_types as $ticketTypeData) {
+            if ((int) $ticketTypeData['quantity'] > 0) {
+                $hasValidQuantity = true;
+                break;
+            }
+        }
+
+        if (!$hasValidQuantity) {
+            return back()->withErrors(['ticket_types' => 'Please select at least one ticket to purchase.']);
+        }
 
         try {
             DB::beginTransaction();
@@ -48,11 +61,18 @@ class TicketController extends Controller
             ]);
 
             $totalAmount = 0;
+            $hasValidTickets = false;
 
             // Create order items
             foreach ($request->ticket_types as $ticketTypeData) {
+                $quantity = (int) $ticketTypeData['quantity'];
+                
+                // Skip if quantity is 0
+                if ($quantity <= 0) {
+                    continue;
+                }
+                
                 $ticketType = TicketType::find($ticketTypeData['id']);
-                $quantity = $ticketTypeData['quantity'];
 
                 // Check availability
                 if ($ticketType->getQuantity() < $quantity) {
@@ -71,10 +91,13 @@ class TicketController extends Controller
 
                 // Create individual tickets
                 for ($i = 0; $i < $quantity; $i++) {
+                    // Generate unique code
+                    $code = $this->generateUniqueTicketCode($order->getId(), $i + 1);
+                    
                     Ticket::create([
                         'order_item_id' => $orderItem->getId(),
                         'user_id' => Auth::id(),
-                        'code' => 'TK' . str_pad($order->getId(), 6, '0', STR_PAD_LEFT) . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                        'code' => $code,
                         'qr_code_hash' => hash('sha256', uniqid((string) $order->getId(), true)),
                         'pdf_url' => '#',
                         'status' => TicketStatus::issued,
@@ -84,12 +107,19 @@ class TicketController extends Controller
                 // Update ticket type quantity
                 $ticketType->setQuantity($ticketType->getQuantity() - $quantity);
                 $ticketType->save();
+                
+                $hasValidTickets = true;
+            }
+
+            // Check if any tickets were selected
+            if (!$hasValidTickets) {
+                throw new \Exception("Please select at least one ticket to purchase.");
             }
 
             // Update order totals
             $order->setSubtotalAmount($totalAmount);
             $order->setTotalAmount($totalAmount);
-            $order->setStatus(OrderStatus::completed);
+            $order->setStatus(OrderStatus::paid);
             $order->save();
 
             DB::commit();
@@ -128,5 +158,21 @@ class TicketController extends Controller
         ];
 
         return response()->json($qrData);
+    }
+
+    private function generateUniqueTicketCode(int $orderId, int $ticketNumber): string
+    {
+        $baseCode = 'TK' . str_pad($orderId, 6, '0', STR_PAD_LEFT) . str_pad($ticketNumber, 3, '0', STR_PAD_LEFT);
+        
+        // Check if code already exists
+        $counter = 0;
+        $code = $baseCode;
+        
+        while (Ticket::where('code', $code)->exists()) {
+            $counter++;
+            $code = $baseCode . '-' . str_pad($counter, 2, '0', STR_PAD_LEFT);
+        }
+        
+        return $code;
     }
 }
