@@ -133,8 +133,8 @@
                                     {{ $event->venue?->getName() ?? 'Sin venue' }} • {{ $event->getStartTime()->format('M d, Y') }}
                                 </div>
                             </div>
-                            <span class="badge badge-{{ $event->getStatus()->value === 'published' ? 'success' : 'secondary' }}">
-                                {{ ucfirst($event->getStatus()->value) }}
+                            <span class="badge badge-{{ $event->getStatus() === 'published' ? 'success' : 'secondary' }}">
+                                {{ ucfirst($event->getStatus()) }}
                             </span>
                         </div>
                     @empty

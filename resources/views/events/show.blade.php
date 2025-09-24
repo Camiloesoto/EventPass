@@ -61,8 +61,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <h6><i class="fas fa-info-circle"></i> Status</h6>
-                            <span class="badge badge-{{ $event->getStatus()->value === 'published' ? 'success' : 'secondary' }}">
-                                {{ ucfirst($event->getStatus()->value) }}
+                            <span class="badge badge-{{ $event->getStatus() === 'published' ? 'success' : 'secondary' }}">
+                                {{ ucfirst($event->getStatus()) }}
                             </span>
                         </div>
                         <div class="col-md-6">

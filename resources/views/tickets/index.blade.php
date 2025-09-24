@@ -23,12 +23,12 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">Ticket #{{ $ticket->code }}</h6>
                             <span class="badge 
-                                @if($ticket->getStatus()->value === 'issued') badge-success
-                                @elseif($ticket->getStatus()->value === 'redeemed') badge-info
-                                @elseif($ticket->getStatus()->value === 'transferred') badge-warning
+                                @if($ticket->getStatus() === 'issued') badge-success
+                                @elseif($ticket->getStatus() === 'redeemed') badge-info
+                                @elseif($ticket->getStatus() === 'transferred') badge-warning
                                 @else badge-danger
                                 @endif">
-                                {{ ucfirst($ticket->getStatus()->value) }}
+                                {{ ucfirst($ticket->getStatus()) }}
                             </span>
                         </div>
                     </div>
@@ -66,7 +66,7 @@
                                 <i class="fas fa-qrcode"></i> Ver Código QR
                             </a>
                             
-                            @if($ticket->getStatus()->value === 'issued')
+                            @if($ticket->getStatus() === 'issued')
                                 <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#transferModal{{ $ticket->id }}">
                                     <i class="fas fa-exchange-alt"></i> Transferir
                                 </button>
@@ -77,7 +77,7 @@
             </div>
             
             <!-- Modal de Transferencia -->
-            @if($ticket->getStatus()->value === 'issued')
+            @if($ticket->getStatus() === 'issued')
                 <div class="modal fade" id="transferModal{{ $ticket->id }}" tabindex="-1">
                     <div class="modal-dialog">
                         <div class="modal-content">

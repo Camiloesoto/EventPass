@@ -93,10 +93,10 @@
                                     <label for="status" class="form-label">Status</label>
                                     <select class="form-control @error('status') is-invalid @enderror" 
                                             id="status" name="status">
-                                        <option value="draft" {{ old('status', $event->getStatus()->value) == 'draft' ? 'selected' : '' }}>Draft</option>
-                                        <option value="published" {{ old('status', $event->getStatus()->value) == 'published' ? 'selected' : '' }}>Published</option>
-                                        <option value="cancelled" {{ old('status', $event->getStatus()->value) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                                        <option value="completed" {{ old('status', $event->getStatus()->value) == 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="draft" {{ old('status', $event->getStatus()) == 'draft' ? 'selected' : '' }}>Draft</option>
+                                        <option value="published" {{ old('status', $event->getStatus()) == 'published' ? 'selected' : '' }}>Published</option>
+                                        <option value="cancelled" {{ old('status', $event->getStatus()) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                        <option value="completed" {{ old('status', $event->getStatus()) == 'completed' ? 'selected' : '' }}>Completed</option>
                                     </select>
                                     @error('status')
                                         <div class="invalid-feedback">{{ $message }}</div>

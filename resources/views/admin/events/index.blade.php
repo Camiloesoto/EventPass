@@ -59,8 +59,8 @@
                                                 <small class="text-muted">{{ $event->availableCapacity() }} available</small>
                                             </td>
                                             <td>
-                                                <span class="badge badge-{{ $event->getStatus()->value === 'published' ? 'success' : ($event->getStatus()->value === 'draft' ? 'warning' : 'secondary') }}">
-                                                    {{ ucfirst($event->getStatus()->value) }}
+                                                <span class="badge badge-{{ $event->getStatus() === 'published' ? 'success' : ($event->getStatus() === 'draft' ? 'warning' : 'secondary') }}">
+                                                    {{ ucfirst($event->getStatus()) }}
                                                 </span>
                                             </td>
                                             <td>
