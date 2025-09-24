@@ -5,6 +5,7 @@ use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class Ticket extends Model
 {
@@ -67,6 +68,11 @@ class Ticket extends Model
         $this->attributes['code'] = $value;
     }
     
+    public function getOrderItemId(): int
+    {
+        return (int) $this->attributes['order_item_id'];
+    }
+    
     public function setOrderItemId(int $value): void
     {
         $this->attributes['order_item_id'] = $value;
@@ -112,23 +118,33 @@ class Ticket extends Model
         $this->attributes['status'] = $value->value;
     }
     
-    public function getRedeemedAt(): ?\Carbon\Carbon
+    public function getRedeemedAt(): ?Carbon
     {
-        return $this->attributes['redeemed_at'] ? \Carbon\Carbon::parse($this->attributes['redeemed_at']) : null;
+        return $this->attributes['redeemed_at'] ? Carbon::parse($this->attributes['redeemed_at']) : null;
     }
     
-    public function setRedeemedAt(?\Carbon\Carbon $value): void
+    public function setRedeemedAt(?Carbon $value): void
     {
         $this->attributes['redeemed_at'] = $value;
     }
     
-    public function getCreatedAt(): \Carbon\Carbon
+    public function getCreatedAt(): Carbon
     {
-        return \Carbon\Carbon::parse($this->attributes['created_at']);
+        return Carbon::parse($this->attributes['created_at']);
     }
     
-    public function getUpdatedAt(): \Carbon\Carbon
+    public function setCreatedAt($value): void
     {
-        return \Carbon\Carbon::parse($this->attributes['updated_at']);
+        $this->attributes['created_at'] = $value;
+    }
+    
+    public function getUpdatedAt(): Carbon
+    {
+        return Carbon::parse($this->attributes['updated_at']);
+    }
+    
+    public function setUpdatedAt($value): void
+    {
+        $this->attributes['updated_at'] = $value;
     }
 }

@@ -98,6 +98,11 @@ class User extends Model implements AuthenticatableContract
         return $this->attributes['remember_token'];
     }
     
+    public function setRememberToken($value): void
+    {
+        $this->attributes['remember_token'] = $value;
+    }
+    
     public function getDeletedAt(): ?Carbon
     {
         return $this->attributes['deleted_at'] ? Carbon::parse($this->attributes['deleted_at']) : null;
@@ -123,8 +128,18 @@ class User extends Model implements AuthenticatableContract
         return Carbon::parse($this->attributes['created_at']);
     }
     
+    public function setCreatedAt($value): void
+    {
+        $this->attributes['created_at'] = $value;
+    }
+    
     public function getUpdatedAt(): Carbon
     {
         return Carbon::parse($this->attributes['updated_at']);
+    }
+    
+    public function setUpdatedAt($value): void
+    {
+        $this->attributes['updated_at'] = $value;
     }
 }

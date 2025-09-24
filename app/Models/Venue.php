@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class Venue extends Model
 {
@@ -51,14 +52,24 @@ class Venue extends Model
         $this->attributes['timezone'] = $value;
     }
     
-    public function getCreatedAt(): \Carbon\Carbon
+    public function getCreatedAt(): Carbon
     {
-        return \Carbon\Carbon::parse($this->attributes['created_at']);
+        return Carbon::parse($this->attributes['created_at']);
     }
     
-    public function getUpdatedAt(): \Carbon\Carbon
+    public function setCreatedAt($value): void
     {
-        return \Carbon\Carbon::parse($this->attributes['updated_at']);
+        $this->attributes['created_at'] = $value;
+    }
+    
+    public function getUpdatedAt(): Carbon
+    {
+        return Carbon::parse($this->attributes['updated_at']);
+    }
+    
+    public function setUpdatedAt($value): void
+    {
+        $this->attributes['updated_at'] = $value;
     }
     
     public function events(): HasMany

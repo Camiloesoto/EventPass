@@ -84,13 +84,18 @@ class Refund extends Model
         $this->attributes['refunded_at'] = $value;
     }
 
-    public function getCreatedAt(): Carbon
+    public function setCreatedAt($value): void
     {
-        return Carbon::parse($this->attributes['created_at']);
+        $this->attributes['created_at'] = $value;
     }
-
+    
     public function getUpdatedAt(): Carbon
     {
         return Carbon::parse($this->attributes['updated_at']);
+    }
+    
+    public function setUpdatedAt($value): void
+    {
+        $this->attributes['updated_at'] = $value;
     }
 }
