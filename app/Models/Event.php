@@ -78,6 +78,27 @@ class Event extends Model
     /* =====================
        Getters/Setters explícitos (para la rúbrica)
        ===================== */
+    
+    public function getId(): int
+    {
+        return (int) $this->attributes['id'];
+    }
+
+    public function setId(int $value): void
+    {
+        $this->attributes['id'] = $value;
+    }
+
+    public function getVenueId(): ?int
+    {
+        return $this->attributes['venue_id'] ? (int) $this->attributes['venue_id'] : null;
+    }
+
+    public function setVenueId(?int $value): void
+    {
+        $this->attributes['venue_id'] = $value;
+    }
+
     public function getName(): string
     {
         return (string) $this->attributes['name'];
