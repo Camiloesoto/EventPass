@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use App\Enums\OrderStatus;
@@ -34,35 +35,6 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function calculateTotals(): float
-    {
-        $subtotal = (float) ($this->items()->selectRaw('SUM(quantity * unit_price) as s')->value('s') ?? 0.0);
-        $this->setSubtotalAmount($subtotal);
-        $this->setTotalAmount(max(0, $subtotal - $this->getDiscountAmount()));
-
-        return $this->getTotalAmount();
-    }
-
-    public function generateTickets(): array
-    {
-        $tickets = [];
-
-        foreach ($this->items as $item) {
-            for ($i = 0; $i < $item->quantity; $i++) {
-                $tickets[] = $item->tickets()->create([
-                    'user_id' => $this->user_id,
-                    'qr_code_hash' => hash('sha256', uniqid((string) $this->id, true)),
-                    'pdf_url' => '#',
-                    'status' => \App\Enums\TicketStatus::issued->value,
-                ]);
-            }
-        }
-
-        return $tickets;
-    }
-
-    /* ===================== Explicit Getters and Setters ===================== */
-    
     public function getId(): int
     {
         return (int) $this->attributes['id'];

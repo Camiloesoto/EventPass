@@ -1,10 +1,10 @@
 <?php
+
 namespace App\Models;
 
 use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
-use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class Ticket extends Model
@@ -28,25 +28,6 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketCheckin::class);
     }
-
-    public function generateQrCode(): void
-    {
-        // integrate a QR lib; store hash/file
-    }
-
-    public function generatePdf(): void
-    {
-        // integrate Dompdf/Snappy and save, update pdf_url
-    }
-
-    public function checkIn(): void
-    {
-        $this->setStatus(TicketStatus::redeemed);
-        $this->setRedeemedAt(now());
-        $this->save();
-    }
-    
-    /* ===================== Explicit Getters and Setters ===================== */
     
     public function getId(): int
     {
