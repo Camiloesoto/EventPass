@@ -6,6 +6,7 @@ use App\Enums\WaitlistStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Notifications\Notifiable;
+use Carbon\Carbon;
 
 class WaitlistEntry extends Model
 {
@@ -25,33 +26,37 @@ class WaitlistEntry extends Model
         return $this->belongsTo(Event::class);
     }
 
-    /* UML: notifyUser(): void */
     public function notifyUser(): void
     {
-        // Implementa tu notificación real (Notification, Mail, etc.)
-        // $this->notify(new WaitlistSpotsAvailableNotification($this->event));
         $this->update(['notified_at' => now()]);
     }
 
-    /* =====================
-       Getters/Setters explícitos (para la rúbrica)
-       ===================== */
-    public function getStatus()
+    public function getId(): int
     {
-        return $this->attributes['status'] ?? null;
+        return (int) $this->attributes['id'];
     }
 
-    public function setStatus($value): void
+    public function setId(int $value): void
     {
-        $this->attributes['status'] = $value;
+        $this->attributes['id'] = $value;
     }
 
-    public function getNotifiedAt()
+    public function getStatus(): WaitlistStatus
     {
-        return $this->attributes['notified_at'];
+        return WaitlistStatus::from($this->attributes['status']);
     }
 
-    public function setNotifiedAt($value): void
+    public function setStatus(WaitlistStatus $value): void
+    {
+        $this->attributes['status'] = $value->value;
+    }
+
+    public function getNotifiedAt(): ?Carbon
+    {
+        return $this->attributes['notified_at'] ? Carbon::parse($this->attributes['notified_at']) : null;
+    }
+
+    public function setNotifiedAt(?Carbon $value): void
     {
         $this->attributes['notified_at'] = $value;
     }
@@ -74,5 +79,25 @@ class WaitlistEntry extends Model
     public function setEventId(int $value): void
     {
         $this->attributes['event_id'] = $value;
+    }
+
+    public function getCreatedAt(): Carbon
+    {
+        return Carbon::parse($this->attributes['created_at']);
+    }
+    
+    public function setCreatedAt($value): void
+    {
+        $this->attributes['created_at'] = $value;
+    }
+    
+    public function getUpdatedAt(): Carbon
+    {
+        return Carbon::parse($this->attributes['updated_at']);
+    }
+    
+    public function setUpdatedAt($value): void
+    {
+        $this->attributes['updated_at'] = $value;
     }
 }
